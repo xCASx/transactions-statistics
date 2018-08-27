@@ -6,24 +6,20 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 
 import static java.time.ZoneOffset.UTC;
-import static java.time.temporal.ChronoUnit.SECONDS;
+import static java.time.temporal.ChronoUnit.MILLIS;
 
-public class TimeValidator implements ConstraintValidator<TimeConstraint, ZonedDateTime> {
+public class FutureTimestampValidator implements ConstraintValidator<FutureTimestampConstraint, ZonedDateTime> {
     @Override
-    public void initialize(TimeConstraint constraintAnnotation) {
+    public void initialize(final FutureTimestampConstraint constraintAnnotation) {
     }
 
     /**
-     * Validate with accuracy up to seconds
-     *
-     * @param timestampField
-     * @param constraintValidatorContext
-     * @return
+     * Validate with accuracy up to millis
      */
     @Override
-    public boolean isValid(ZonedDateTime timestampField, ConstraintValidatorContext constraintValidatorContext) {
+    public boolean isValid(final ZonedDateTime timestampField, final ConstraintValidatorContext context) {
         ZonedDateTime currentZonedDateTime = OffsetDateTime.now(UTC).toZonedDateTime();
-        long diff = SECONDS.between(timestampField, currentZonedDateTime);
-        return diff >= 0 && !(diff > 60 * 60 * 24);
+        long diff = MILLIS.between(timestampField, currentZonedDateTime);
+        return diff >= 0;
     }
 }

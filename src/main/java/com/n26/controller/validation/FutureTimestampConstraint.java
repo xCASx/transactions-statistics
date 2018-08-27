@@ -11,11 +11,11 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Documented
-@Constraint(validatedBy = TimeValidator.class)
+@Constraint(validatedBy = FutureTimestampValidator.class)
 @Target( { METHOD, FIELD })
 @Retention(RUNTIME)
-public @interface TimeConstraint {
-    String message() default "Time validation constraint violated";
+public @interface FutureTimestampConstraint {
+    String message() default "Timestamp field contains future time";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }
