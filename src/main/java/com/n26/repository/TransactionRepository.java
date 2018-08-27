@@ -8,16 +8,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static java.time.ZoneOffset.UTC;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static java.time.temporal.ChronoUnit.MINUTES;
+import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 @Slf4j
-//@Repository
+@Repository
 public class TransactionRepository {
+
+    private static final int INVALIDATION_POOL_SIZE = 4;
+    private static final long TTL = Duration.of(1, MINUTES).toMillis();
+    private static final ScheduledExecutorService INVALIDATION_POOL = newScheduledThreadPool(INVALIDATION_POOL_SIZE);
 
     private StatisticsRepository statisticsRepository;
 
@@ -27,26 +36,32 @@ public class TransactionRepository {
     };
 
     private final Cache<UUID, Transaction> transactionCache = CacheBuilder.newBuilder()
-            .expireAfterWrite(1, MINUTES)
             .removalListener(REMOVAL_LISTENER)
             .build();
 
     @Autowired
     public TransactionRepository(final StatisticsRepository statisticsRepository) {
         this.statisticsRepository = statisticsRepository;
-        // Separate thread responsible for regular clean-ups of evicted transactions
-        ScheduledExecutorService executor = newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(transactionCache::cleanUp, 1, 1, MILLISECONDS);
     }
 
     public void insert(final Transaction transaction) {
         UUID key = UUID.randomUUID();
         transactionCache.put(key, transaction);
         statisticsRepository.addTransaction(transaction);
+        scheduleForRemoval(transaction, key);
         log.debug("Transaction added {}", key);
     }
 
+    private void scheduleForRemoval(Transaction transaction, UUID key) {
+        ZonedDateTime currentZonedDateTime = OffsetDateTime.now(UTC).toZonedDateTime();
+        long diff = TTL - MILLIS.between(transaction.getTimestamp(), currentZonedDateTime);
+        INVALIDATION_POOL.schedule(() -> transactionCache.invalidate(key), diff, MILLISECONDS);
+    }
+
     public void clear() {
+        log.debug("Invalidating all caches");
         transactionCache.invalidateAll();
+        statisticsRepository.wipeStatistics();
+        transactionCache.cleanUp();
     }
 }

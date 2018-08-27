@@ -10,11 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
 
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
-
-import static java.time.ZoneOffset.UTC;
-import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.web.bind.annotation.RequestMethod.DELETE;

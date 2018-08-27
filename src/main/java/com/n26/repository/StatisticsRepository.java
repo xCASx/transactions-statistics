@@ -63,6 +63,17 @@ public class StatisticsRepository {
         return new Statistics(GOLDEN_TRUTH_STATISTICS.get());
     }
 
+    void wipeStatistics() {
+        writeLock.lock();
+        try {
+            GOLDEN_TRUTH_STATISTICS.set(EMPTY_STATISTICS);
+            MIN_STACK.clear();
+            MAX_STACK.clear();
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
     void addTransaction(final Transaction transaction) {
         BigDecimal amount = transaction.getAmount();
         Statistics newTransactionStat = new Statistics(amount, amount, amount, amount, 1);
