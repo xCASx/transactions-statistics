@@ -64,13 +64,15 @@ public class TransactionRepositoryTest {
     }
 
     @Test
-    public void shouldImmediatelyRemoveExpiredTransaction() {
+    public void shouldImmediatelyRemoveExpiredTransaction() throws InterruptedException {
         Fixture fixture = new Fixture();
         ZonedDateTime stillValidTransaction = OffsetDateTime.now(UTC).toZonedDateTime().minus(61L, SECONDS);
         Transaction testTransaction = fixture.givenTransaction(stillValidTransaction);
 
         fixture.statisticsRepository.insert(testTransaction);
 
+        // still need to sleep a bit to overcome racing condition
+        TimeUnit.MILLISECONDS.sleep(100L);
         Statistics resultStatistics = fixture.statisticsRepository.getStatistics();
 
         assertEquals("Statistics should be empty after transaction expiration", EMPTY_STATISTICS, resultStatistics);
