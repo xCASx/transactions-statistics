@@ -32,7 +32,9 @@ public class StatisticsRepository {
 
     public static final RoundingMode DEFAULT_ROUNDING = HALF_UP;
     public static final int CALC_SCALE = 12;
-    public static final Statistics EMPTY_STATISTICS = new Statistics(ZERO, ZERO, ZERO, ZERO, 0);
+    public static final BigDecimal SCALED_ZERO = ZERO.setScale(2, HALF_UP);
+    public static final Statistics EMPTY_STATISTICS =
+            new Statistics(SCALED_ZERO, SCALED_ZERO, SCALED_ZERO, SCALED_ZERO, 0);
 
     private static final int INVALIDATION_POOL_SIZE = 4;
     private static final long TTL = Duration.of(1, MINUTES).toMillis();

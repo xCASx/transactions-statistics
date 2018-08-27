@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
@@ -14,6 +15,7 @@ import static com.n26.repository.StatisticsRepository.DEFAULT_ROUNDING;
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
+@ToString
 public class Statistics {
     @JsonFormat(shape = STRING)
     private final BigDecimal sum;
