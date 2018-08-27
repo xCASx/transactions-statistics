@@ -1,7 +1,7 @@
 package com.n26.controller;
 
 import com.n26.domain.Transaction;
-import com.n26.service.TransactionService;
+import com.n26.service.StatisticsService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,7 +19,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.POST;
 @RestController
 public class TransactionsController {
 
-    private final TransactionService transactionService;
+    private final StatisticsService statisticsService;
 
     /**
      * 201 – in case of success
@@ -32,13 +32,13 @@ public class TransactionsController {
      */
     @RequestMapping(method = POST)
     public ResponseEntity postTransaction(@RequestBody @Valid final Transaction transaction) {
-        transactionService.create(transaction);
+        statisticsService.add(transaction);
         return ResponseEntity.status(CREATED).body(null);
     }
 
     @RequestMapping(method = DELETE)
     public ResponseEntity deleteTransactions() {
-        transactionService.delete();
+        statisticsService.wipeStatistics();
         return ResponseEntity.status(NO_CONTENT).body(null);
     }
 }

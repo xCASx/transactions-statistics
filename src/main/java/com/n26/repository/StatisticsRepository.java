@@ -2,12 +2,17 @@ package com.n26.repository;
 
 import com.n26.domain.Statistics;
 import com.n26.domain.Transaction;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -15,14 +20,23 @@ import java.util.function.BinaryOperator;
 
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_UP;
+import static java.time.ZoneOffset.UTC;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static java.time.temporal.ChronoUnit.MINUTES;
+import static java.util.concurrent.Executors.newScheduledThreadPool;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+@Slf4j
 @Repository
 public class StatisticsRepository {
 
     public static final RoundingMode DEFAULT_ROUNDING = HALF_UP;
     public static final int CALC_SCALE = 12;
+    public static final Statistics EMPTY_STATISTICS = new Statistics(ZERO, ZERO, ZERO, ZERO, 0);
 
-    private static final Statistics EMPTY_STATISTICS = new Statistics(ZERO, ZERO, ZERO, ZERO, 0);
+    private static final int INVALIDATION_POOL_SIZE = 4;
+    private static final long TTL = Duration.of(1, MINUTES).toMillis();
+    private static final ScheduledExecutorService INVALIDATION_POOL = newScheduledThreadPool(INVALIDATION_POOL_SIZE);
     private static final AtomicReference<Statistics> GOLDEN_TRUTH_STATISTICS = new AtomicReference<>(EMPTY_STATISTICS);
     private static final Deque<BigDecimal> MIN_STACK = new ArrayDeque<>();
     private static final Deque<BigDecimal> MAX_STACK = new ArrayDeque<>();
@@ -63,7 +77,21 @@ public class StatisticsRepository {
         return new Statistics(GOLDEN_TRUTH_STATISTICS.get());
     }
 
-    void wipeStatistics() {
+    public void insert(final Transaction transaction) {
+        addTransaction(transaction);
+        scheduleForRemoval(transaction);
+        log.debug("Transaction added {}", transaction);
+    }
+
+    private void scheduleForRemoval(Transaction transaction) {
+        ZonedDateTime currentZonedDateTime = OffsetDateTime.now(UTC).toZonedDateTime();
+        long diff = TTL - MILLIS.between(transaction.getTimestamp(), currentZonedDateTime);
+        Runnable invalidateTransaction = () -> removeTransaction(transaction);
+        INVALIDATION_POOL.schedule(invalidateTransaction, diff, MILLISECONDS);
+    }
+
+    public void wipe() {
+        log.debug("Invalidating all caches");
         writeLock.lock();
         try {
             GOLDEN_TRUTH_STATISTICS.set(EMPTY_STATISTICS);
@@ -74,7 +102,7 @@ public class StatisticsRepository {
         }
     }
 
-    void addTransaction(final Transaction transaction) {
+    private void addTransaction(final Transaction transaction) {
         BigDecimal amount = transaction.getAmount();
         Statistics newTransactionStat = new Statistics(amount, amount, amount, amount, 1);
 
@@ -96,7 +124,7 @@ public class StatisticsRepository {
         }
     }
 
-    void removeTransaction(final Transaction transaction) {
+    private void removeTransaction(final Transaction transaction) {
         BigDecimal amount = transaction.getAmount();
         Statistics newTransactionStat = new Statistics(amount, amount, amount, amount, 1);
 
